@@ -332,6 +332,10 @@ gothic-generate \
 
 Launch the interactive chat with real-time streaming and a retro terminal vibe:
 
+![Gothic Chat Interface](image.png)
+
+*Example chat session showing the gothic interface and model generation (early training stage shown)*
+
 ```bash
 # Start without a model and load one interactively
 gothic-chat
