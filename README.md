@@ -24,36 +24,157 @@ This toolkit provides a complete pipeline for training decoder-only transformer 
 
 ## Quick Start
 
+Get up and running in 4 simple steps:
+
+### Step 0: Install Dependencies
+
 ```bash
-# Install dependencies
+# Clone repository
+git clone <repository-url>
+cd personal-gpt
+
+# Create environment and install dependencies
 uv sync
 source .venv/bin/activate
 
-# 1. Train BPE tokenizer on your corpus
+# Verify installation
+gothic-tokenize --help
+gothic-train --help
+```
+
+### Step 1: Train Tokenizer
+
+Create a BPE tokenizer from your text corpus. This only needs to be done once.
+
+```bash
+# Train tokenizer with default settings (4096 vocab size)
+gothic-tokenize
+
+# Or with custom settings
 gothic-tokenize \
     --files data/processed/mixed_train.txt \
     --vocab-size 4096 \
     --output data/tokenizer.json
-
-# 2. Train model (3-5 hours on RTX 4080)
-gothic-train \
-    --train-file mixed_train.txt \
-    --val-file mixed_val.txt \
-    --max-iters 6000 \
-    --batch-size 16 \
-    --grad-accum 4
-
-# 3. Generate text via CLI
-gothic-generate \
-    --checkpoint checkpoints/best.pt \
-    --prompt "Once upon a time" \
-    --max-tokens 200
-
-# 4. Or use the interactive chat (optionally specify checkpoint)
-gothic-chat
 ```
 
-Monitor training progress: `tensorboard --logdir checkpoints/logs`
+**What this does:**
+- Analyzes your training text to learn subword tokens
+- Creates `data/tokenizer.json` with the vocabulary
+- Default vocab size: 4096 tokens (good balance for ~35M parameter models)
+
+**Output:** `data/tokenizer.json`
+
+### Step 2: Train Model
+
+Train the GPT model from scratch. This is the longest step (3-5 hours on RTX 4080).
+
+```bash
+# Train with defaults (10000 steps, ~3-5 hours)
+gothic-train
+
+# Or specify custom training steps
+gothic-train --max-iters 15000
+
+# Resume training from checkpoint
+gothic-train --resume --max-iters 15000
+```
+
+**What this does:**
+- Loads the tokenizer from Step 1
+- Creates binary data files for efficient training
+- Trains the model for specified iterations
+- Saves checkpoints to `checkpoints/` directory
+
+**Key Parameters:**
+- `--max-iters`: Total training steps (default: 10000)
+  - 10000 steps: Good baseline (~3-4 hours)
+  - 15000 steps: Better coherence (~5-6 hours)
+- `--resume`: Continue from last checkpoint
+
+**Output Files:**
+- `checkpoints/best.pt` - Best model (lowest validation loss)
+- `checkpoints/latest.pt` - Most recent checkpoint
+- `checkpoints/final.pt` - Final model after training
+
+**Monitor Progress:**
+```bash
+# In another terminal
+tensorboard --logdir checkpoints/logs
+# Open http://localhost:6006
+```
+
+### Step 3: Chat with Your Model
+
+Launch the interactive chat interface to talk with your trained model.
+
+```bash
+# Start chat (will prompt to select model if not specified)
+gothic-chat
+
+# Or start with specific checkpoint
+gothic-chat --checkpoint checkpoints/best.pt
+
+# With custom generation settings
+gothic-chat --checkpoint checkpoints/best.pt --temp 0.8 --max 300
+```
+
+**What this does:**
+- Loads the trained model checkpoint
+- Starts interactive chat with typewriter effect
+- Allows real-time parameter adjustment
+
+**Chat Commands:**
+- Type normally to chat with the AI
+- `/model <name>` - Switch to different checkpoint
+- `/models` - List available checkpoints
+- `/temp 0.9` - Adjust temperature (creativity)
+- `/max 300` - Set max response length
+- `/quit` - Exit chat
+
+### Complete Workflow Example
+
+```bash
+# 1. Setup
+uv sync
+source .venv/bin/activate
+
+# 2. Train tokenizer (one time)
+gothic-tokenize
+
+# 3. Train model (3-5 hours)
+gothic-train
+
+# 4. Chat with your model
+gothic-chat
+
+# Optional: Generate text via CLI
+gothic-generate \
+    --checkpoint checkpoints/best.pt \
+    --prompt "In the shadow of R'lyeh" \
+    --max-tokens 200
+```
+
+### Tips for Best Results
+
+1. **Training Duration**: More steps = better coherence
+   - Minimum: 10000 steps (baseline quality)
+   - Recommended: 15000 steps (good coherence)
+   - Maximum: 20000+ steps (best quality)
+
+2. **Temperature Settings**:
+   - Low (0.6-0.7): Focused, deterministic output
+   - Medium (0.8-0.9): Balanced creativity
+   - High (1.0-1.2): Creative, diverse output
+
+3. **Checkpoint Selection**:
+   - `best.pt`: Usually best quality (lowest validation loss)
+   - `latest.pt`: Most recent training state
+   - `final.pt`: End of training
+
+4. **Resume Training**: If results aren't good enough
+   ```bash
+   gothic-train --resume --max-iters 15000
+   ```
 
 ## Installation
 
@@ -155,17 +276,18 @@ gothic-train \
 **Key Parameters**:
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `--max-iters` | 6000 | Total training iterations |
+| `--max-iters` | 10000 | Total training iterations (user-specified) |
 | `--batch-size` | 16 | Samples per batch |
 | `--grad-accum` | 4 | Gradient accumulation steps |
 | `--lr` | 3e-4 | Peak learning rate |
 | `--resume` | - | Resume from checkpoint |
 
-**Expected Training Time**: ~3-5 hours (RTX 4080)
+**Expected Training Time**: ~3-5 hours for 10000 steps (RTX 4080)
 
 **Expected Results**:
 - Validation Loss: 2.0-2.5
 - Perplexity: 7-12
+- Training longer (15000+ steps) improves coherence
 
 #### Step 4: Resume Training (if needed)
 
@@ -271,18 +393,18 @@ Edit `src/config.py`:
 @dataclass
 class ModelConfig:
     vocab_size: int = 4096      # BPE vocabulary size
-    block_size: int = 384       # Context window length
+     block_size: int = 512       # Context window length (increased for better coherence)
     n_layer: int = 8            # Transformer layers
     n_head: int = 8             # Attention heads
     n_embd: int = 512           # Embedding dimension
 
 @dataclass
 class TrainConfig:
-    max_iters: int = 6000
+    max_iters: int = 10000  # User-controlled via CLI
     batch_size: int = 16
     gradient_accumulation_steps: int = 4
     learning_rate: float = 3e-4
-    warmup_iters: int = 500
+    warmup_iters: int = 1000
 ```
 
 ### Learning Rate Guidelines
@@ -298,7 +420,7 @@ class TrainConfig:
 
 | Component | Default | Reduce If | Increase If |
 |-----------|---------|-----------|-------------|
-| `block_size` | 384 | OOM errors | Longer context needed |
+| `block_size` | 512 | OOM errors | Longer context needed |
 | `n_layer` | 8 | Slow training | Better quality required |
 | `n_embd` | 512 | Memory limited | Richer representations |
 | `vocab_size` | 4096 | Fast iteration | Rare word coverage |
@@ -348,7 +470,7 @@ gothic-train [OPTIONS]
   --val-file TEXT       Validation file [default: mixed_val.txt]
   --tokenizer TEXT      Tokenizer path [default: data/tokenizer.json]
   --out-dir TEXT        Output directory [default: checkpoints]
-  --max-iters INT       Training iterations [default: 6000]
+  --max-iters INT       Training iterations [default: 10000, user-specified]
   --batch-size INT      Batch size [default: 16]
   --grad-accum INT      Gradient accumulation [default: 4]
   --lr FLOAT            Learning rate [default: 3e-4]
@@ -405,7 +527,7 @@ gothic-chat --checkpoint checkpoints/latest.pt --temp 1.0 --max 300
 
 - **Type**: Decoder-only transformer (GPT-style)
 - **Parameters**: ~35M (8 layers, 8 heads, 512 dim, 4096 vocab)
-- **Context**: 384 tokens
+- **Context**: 512 tokens (increased for better long-range coherence)
 - **Features**:
   - Pre-layer normalization
   - Causal self-attention with Flash Attention
@@ -415,7 +537,7 @@ gothic-chat --checkpoint checkpoints/latest.pt --temp 1.0 --max 300
 ### Training Configuration
 
 - **Optimizer**: AdamW (β1=0.9, β2=0.95, weight_decay=0.1)
-- **Schedule**: Linear warmup (500 steps) + cosine decay
+- **Schedule**: Linear warmup (1000 steps) + cosine decay
 - **Precision**: bfloat16 mixed precision
 - **Batching**: Physical batch 16 × 4 accumulation = effective 64
 - **Checkpointing**: Best model saved by validation loss

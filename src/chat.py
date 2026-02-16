@@ -13,7 +13,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import torch
 from tokenizers import Tokenizer
-from tokenizers.decoders import ByteLevel
 
 from src.config import ModelConfig
 from src.model import GPT
@@ -56,8 +55,7 @@ def load_checkpoint(filepath, device):
         raise FileNotFoundError("Tokenizer not found! Run tokenizer training first.")
     
     tokenizer = Tokenizer.from_file(str(tokenizer_path))
-    # Add ByteLevel decoder to properly handle BPE tokens (Ġ -> space, etc.)
-    tokenizer.decoder = ByteLevel()
+    # Tokenizer now has ByteLevel decoder built-in (configured in train_tokenizer.py)
     config.vocab_size = tokenizer.get_vocab_size()
     
     # Create and load model

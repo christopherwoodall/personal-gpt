@@ -114,7 +114,7 @@ def main() -> None:
     parser.add_argument("--tokenizer", type=str, default="data/tokenizer.json")
     parser.add_argument("--out-dir", type=str, default="checkpoints")
     parser.add_argument("--resume", action="store_true", help="Resume from latest checkpoint")
-    parser.add_argument("--max-iters", type=int, default=6000)
+    parser.add_argument("--max-iters", type=int, default=None, help="Training iterations (default: 10000, or loaded from checkpoint if resuming)")
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--grad-accum", type=int, default=4)
     parser.add_argument("--lr", type=float, default=3e-4)
@@ -123,19 +123,23 @@ def main() -> None:
     
     args = parser.parse_args()
     
-    # Setup configuration
+    # Setup configuration with user-controlled max_iters
     config = TrainConfig(
         data_dir=args.data_dir,
         train_file=args.train_file,
         val_file=args.val_file,
         tokenizer_path=args.tokenizer,
         out_dir=args.out_dir,
-        max_iters=args.max_iters,
         batch_size=args.batch_size,
         gradient_accumulation_steps=args.grad_accum,
         learning_rate=args.lr,
         compile=args.compile,
     )
+    
+    # Override max_iters if provided via CLI
+    if args.max_iters is not None:
+        config.max_iters = args.max_iters
+        config.lr_decay_iters = args.max_iters
     
     # Create output directory
     out_dir = Path(config.out_dir)

@@ -15,7 +15,7 @@ class ModelConfig:
     Defaults optimized for ~35M parameters on RTX 4080 (16GB).
     """
     vocab_size: int = 4096
-    block_size: int = 384
+    block_size: int = 512  # Increased from 384 for better long-range dependencies
     n_layer: int = 8
     n_head: int = 8
     n_embd: int = 512
@@ -48,10 +48,10 @@ class TrainConfig:
     # Model
     model_config: Optional[ModelConfig] = None
     
-    # Training loop
-    max_iters: int = 6000
-    warmup_iters: int = 500
-    lr_decay_iters: int = 6000
+    # Training loop - defaults for coherence (user can override via CLI)
+    max_iters: int = 10000  # Increased from 6000 for better convergence
+    warmup_iters: int = 1000  # Increased from 500 for smoother start
+    lr_decay_iters: int = 10000
     eval_interval: int = 500
     eval_iters: int = 100
     log_interval: int = 10

@@ -12,6 +12,7 @@ from tokenizers import Tokenizer
 from tokenizers.models import BPE
 from tokenizers.trainers import BpeTrainer
 from tokenizers.pre_tokenizers import ByteLevel
+from tokenizers.decoders import ByteLevel as ByteLevelDecoder
 from tokenizers.normalizers import NFKC
 
 
@@ -50,6 +51,9 @@ def train_tokenizer(
     
     # Byte-level pre-tokenizer handles all Unicode via bytes
     tokenizer.pre_tokenizer = ByteLevel(add_prefix_space=False)
+    
+    # Add ByteLevel decoder to properly decode tokens (fixes Ġ/Ċ issues)
+    tokenizer.decoder = ByteLevelDecoder()
     
     # Configure trainer
     trainer = BpeTrainer(
