@@ -10,7 +10,7 @@ This toolkit provides a complete pipeline for training decoder-only transformer 
 
 1. **Tokenizer Training**: BPE tokenization on your corpus
 2. **Model Training**: GPT-style architecture with modern optimizations
-3. **Inference**: Both programmatic (CLI) and interactive (TUI) interfaces
+3. **Inference**: Both programmatic (CLI) and interactive chat interfaces
 
 **Hardware Requirements**: CUDA-capable GPU recommended (tested on RTX 4080 16GB)
 
@@ -49,8 +49,8 @@ gothic-generate \
     --prompt "Once upon a time" \
     --max-tokens 200
 
-# 4. Or use the interactive TUI
-gothic-tui
+# 4. Or use the interactive chat (optionally specify checkpoint)
+gothic-chat
 ```
 
 Monitor training progress: `tensorboard --logdir checkpoints/logs`
@@ -102,9 +102,8 @@ personal-gpt/
 │   ├── model.py           # GPT model implementation
 │   ├── train.py           # Training loop
 │   ├── generate.py        # CLI generation
+│   ├── chat.py            # Interactive chat interface
 │   └── train_tokenizer.py # Tokenizer training
-├── chat_tui/
-│   └── chat.py            # Interactive TUI interface
 ├── checkpoints/           # Saved model checkpoints
 ├── logs/                  # Chat exports and logs
 └── pyproject.toml         # Package configuration
@@ -207,21 +206,25 @@ gothic-generate \
 | Balanced | 0.8 | 40 | General use |
 | Creative | 1.2 | 100 | Exploration/diversity |
 
-#### Interactive TUI
+#### Interactive Chat
 
-Launch the terminal UI for conversational interaction:
+Launch the interactive chat with real-time streaming and a retro terminal vibe:
 
 ```bash
-gothic-tui
+# Start without a model and load one interactively
+gothic-chat
+
+# Or start with a specific checkpoint
+gothic-chat --checkpoint checkpoints/best.pt
 ```
 
 **Features**:
-- Real-time streaming generation
-- Model checkpoint switching
+- Real-time streaming generation with typewriter effect
+- Model checkpoint switching on-the-fly
 - Adjustable generation parameters
-- Chat history export
+- Conversation history with context
 
-**Slash Commands** (type in TUI):
+**Slash Commands** (type during chat):
 
 | Command | Description | Example |
 |---------|-------------|---------|
@@ -230,15 +233,20 @@ gothic-tui
 | `/topp <float>` | Set top-p | `/topp 0.95` |
 | `/max <int>` | Set max tokens | `/max 300` |
 | `/model <name>` | Switch checkpoint | `/model best` |
-| `/clear` | Clear history | `/clear` |
-| `/save` | Export chat | `/save` |
+| `/models` | List available models | `/models` |
+| `/reset` | Clear history | `/reset` |
+| `/params` | Show model stats | `/params` |
 | `/help` | Show commands | `/help` |
+| `/quit` | Exit chat | `/quit` |
 
 **Controls**:
-- `Enter`: Send message
-- `Tab`: Navigate between fields
-- `Up/Down`: Scroll history
-- `Ctrl+C`: Exit
+- Type your message and press `Enter` to send
+- `Ctrl+C`: Exit the chat
+
+**Command-line Options**:
+```bash
+gothic-chat --checkpoint checkpoints/best.pt --temp 0.8 --topk 40 --max 200
+```
 
 ### Monitoring Training
 
@@ -314,7 +322,7 @@ All commands are defined in `pyproject.toml`:
 gothic-tokenize = "src.train_tokenizer:main"
 gothic-train = "src.train:main"
 gothic-generate = "src.generate:main"
-gothic-tui = "chat_tui.chat:main"
+gothic-chat = "src.chat:main"
 ```
 
 ### gothic-tokenize
@@ -366,12 +374,29 @@ gothic-generate [OPTIONS]
   --interactive         Interactive mode
 ```
 
-### gothic-tui
+### gothic-chat
 
-Launch interactive terminal UI.
+Interactive chat with real-time streaming generation.
 
 ```bash
-gothic-tui
+gothic-chat [OPTIONS]
+  --checkpoint TEXT     Model checkpoint (optional)
+  --temp FLOAT          Temperature [default: 0.8]
+  --topk INT            Top-k sampling [default: 40]
+  --topp FLOAT          Top-p sampling [default: 0.9]
+  --max INT             Max tokens [default: 200]
+```
+
+**Examples**:
+```bash
+# Start chat and select model interactively
+gothic-chat
+
+# Start chat with specific checkpoint
+gothic-chat --checkpoint checkpoints/best.pt
+
+# Custom generation parameters
+gothic-chat --checkpoint checkpoints/latest.pt --temp 1.0 --max 300
 ```
 
 ## Technical Details
@@ -407,10 +432,10 @@ gothic-tui
 
 ```bash
 # Format code
-uv run black src/ chat_tui/
+uv run black src/
 
 # Lint
-uv run ruff src/ chat_tui/
+uv run ruff src/
 
 # Run tests (if available)
 uv run pytest
